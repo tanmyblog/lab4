@@ -27,6 +27,10 @@ float y; // toa do y cua camera
 float dTheta; // Muc tang/giam theta khi dieu khien
 float dy; // muc tang/giam y khi dieu khien
 
+bool moving = true;
+const char stop = 5;
+int temp = 0;
+
 void DrawGround();
 void SettingCamera(float theta, float y);
 void Keyboard(unsigned char key, int, int);
@@ -60,9 +64,6 @@ void Display();
 void Init();
 void Rashape(int width, int height);
 void Idle();
-
-
-
 
 void DrawCube(float xPos, float yPos, float zPos)
 {
@@ -239,18 +240,33 @@ void Special(int key, int, int)
 		case GLUT_KEY_LEFT:
 			moveDireaction = MOVE_LEFT;
 			angle = TURN_LEFT;
+			temp = moveDireaction;
 			break;
 		case GLUT_KEY_RIGHT:
 			moveDireaction = MOVE_RIGHT;
 			angle = TURN_RIGHT;
+			temp = moveDireaction;
 			break;
 		case GLUT_KEY_UP:
 			moveDireaction = MOVE_UP;
 			angle = TURN_UP;
+			temp = moveDireaction;
 			break;
 		case GLUT_KEY_DOWN:
 			moveDireaction = MOVE_DOWN;
 			angle = TURN_DOWN;
+			temp = moveDireaction;
+			break;
+		case GLUT_KEY_END:
+			if (moveDireaction != stop)
+			{
+				moveDireaction = stop;
+			}
+			else
+			{
+				moveDireaction = temp;
+			}
+			moving = !moving;
 			break;
 	}
 	glutPostRedisplay();
@@ -258,28 +274,31 @@ void Special(int key, int, int)
 
 void Prepare()
 {
-	for (char side = 0; side < 2; side++)
+	if (moving)
 	{
-		/* goc xoay cho tay */
-		if (armStates[side] == FORWARD_STATE)
-			armAngles[side] += 0.1f;
-		else
-			armAngles[side] -= 0.1f;
-		/* thay doi trang thai goc xoay vuot qua goa tri cho phep */
-		if (armAngles[side] >= 15.0f)
-			armStates[side] = BACKWARD_STATE;
-		else if (armAngles[side] <= -15.0f)
-			armStates[side] = FORWARD_STATE;
-		/* goc xoay cho chan */
-		if (legStates[side] == FORWARD_STATE)
-			legAngles[side] += 0.1f;
-		else
-			legAngles[side] -= 0.1f;
-		/* thay doi trang thai neo goc xoay vuot qua gia tri cho phep */
-		if (legAngles[side] >= 15.0f)
-			legStates[side] = BACKWARD_STATE;
-		else if (legAngles[side] <= -15.0f)
-			legStates[side] = FORWARD_STATE;
+		for (char side = 0; side < 2; side++)
+		{
+			/* goc xoay cho tay */
+			if (armStates[side] == FORWARD_STATE)
+				armAngles[side] += 0.1f;
+			else
+				armAngles[side] -= 0.1f;
+			/* thay doi trang thai goc xoay vuot qua goa tri cho phep */
+			if (armAngles[side] >= 15.0f)
+				armStates[side] = BACKWARD_STATE;
+			else if (armAngles[side] <= -15.0f)
+				armStates[side] = FORWARD_STATE;
+			/* goc xoay cho chan */
+			if (legStates[side] == FORWARD_STATE)
+				legAngles[side] += 0.1f;
+			else
+				legAngles[side] -= 0.1f;
+			/* thay doi trang thai neo goc xoay vuot qua gia tri cho phep */
+			if (legAngles[side] >= 15.0f)
+				legStates[side] = BACKWARD_STATE;
+			else if (legAngles[side] <= -15.0f)
+				legStates[side] = FORWARD_STATE;
+		}
 	}
 	switch (moveDireaction)
 	{
@@ -291,6 +310,8 @@ void Prepare()
 			moveZ -= 0.015f; break;
 		case MOVE_DOWN:
 			moveZ += 0.015f; break;
+		case stop:
+			moveX = moveX; moveZ = moveZ; break;
 	}
 }
 
@@ -388,7 +409,7 @@ int main(int argc, char** argv)
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowPosition(80, 80);
 	glutInitWindowSize(800, 600);
-	glutCreateWindow("Robot 1");
+	glutCreateWindow("Robot 2");
 	glutDisplayFunc(Display);
 	glutReshapeFunc(Rashape);
 	glutIdleFunc(Idle);
