@@ -1,57 +1,49 @@
-#include <GL\glew.h>
+#include<GL\glew.h>
 #include <GL\freeglut.h>
 #include <math.h>
 
-/* cac huong di chuyen */
+const char BACKWARD_STATE = 0;
+const char FORWARD_STATE = 1;
+
+const char LEFT = 0;
+const char RIGHT = 1;
+
+char legStates[2];
+char armStates[2];
+
+float legAngles[2];
+float armAngles[2];
+
+float angle;
+
 const char MOVE_LEFT = 0;
 const char MOVE_RIGHT = 1;
 const char MOVE_UP = 3;
 const char MOVE_DOWN = 4;
+const char JUMP = 5;
+const char STOP = 6;
 
-/* goc xoay tuong ung khi su dung cac phim  */
+bool bFullsreen = false;
+int nWindowID;
+
 const int TURN_LEFT = -90;
 const int TURN_RIGHT = 90;
 const int TURN_UP = 180;
 const int TURN_DOWN = 0;
 
-const int GROUND_SIZE = 200; // kich thuoc cua mat san
-const float FLOOR_HEIGHT = -2; // do cao cua mat san
-const int CHECK_SIZE = 5;	// kich thuoc moi o
+const int GROUND_SIZE = 200;
+const float FLOOR_HEIGHT = -2;
+const int CHECK_SIZE = 5;
 
-int moveDireaction; // huong di chuyen
-float moveX; // vt huong di chuyen theo truc x
-float moveZ; // vt huong di chuyen theo truc z
-
-float theta; // goc xoay theo camera (tinh toa do x y)
-float y; // toa do y cua camera
-float dTheta; // Muc tang/giam theta khi dieu khien
-float dy; // muc tang/giam y khi dieu khien
-
-bool moving = true;
-const char stop = 5;
-int temp = 0;
-
-void DrawGround();
-void SettingCamera(float theta, float y);
-void Keyboard(unsigned char key, int, int);
-void Special(int key, int, int);
-
-const char BACKWARD_STATE = 0;
-const char FORWARD_STATE = 1;
-
-char LEFT = 0;
-char RIGHT = 1;
-
-/* trang thai di chuyen cua tay chan */
-char legStates[2];
-char armStates[2];
-
-/* goc xoay hien tai cua tay chan */
-float legAngles[2];
-float armAngles[2];
-
-/* goc xoay hien tai cua toan bo robot */
-float angle;
+int moveDirection;
+int jump;
+float moveX;
+float moveZ;
+float moveY = 8.0f;
+float theta;
+float y;
+float dTheta;
+float dy;
 
 void DrawCube(float xPos, float yPos, float zPos);
 void DrawArm(float xPos, float yPos, float zPos);
@@ -62,146 +54,207 @@ void DrawRobot(float xPos, float yPos, float zPos);
 void Prepare();
 void Display();
 void Init();
-void Rashape(int width, int height);
+void Reshape(int Width, int Height);
 void Idle();
+void DrawGround();
+void SettingCamera(float theta, float y);
+void Keyboard(unsigned char key, int, int);
+void Special(int key, int, int);
+bool flag = true;
 
-void DrawCube(float xPos, float yPos, float zPos)
-{
-	glPushMatrix();	// luu trang thai hien tai vao stack;
+void DrawCube(float xPos, float yPos, float zPos) {
+	glPushMatrix();
 	glTranslatef(xPos, yPos, zPos);
 	glBegin(GL_QUADS);
-	/* ve mat tren */
+
 	glNormal3d(0, 1, 0);
 	glVertex3f(0.0f, 0.0f, 0.0f);
 	glVertex3f(0.0f, 0.0f, -1.0f);
 	glVertex3f(-1.0f, 0.0f, -1.0f);
 	glVertex3f(-1.0f, 0.0f, 0.0f);
-	/* ve mat truoc */
+
 	glNormal3d(0, 0, 1);
 	glVertex3f(0.0f, 0.0f, 0.0f);
 	glVertex3f(-1.0f, 0.0f, 0.0f);
 	glVertex3f(-1.0f, -1.0f, 0.0f);
 	glVertex3f(0.0f, -1.0f, 0.0f);
-	/* ve mat phai */
+
 	glNormal3d(1, 0, 0);
 	glVertex3f(0.0f, 0.0f, 0.0f);
 	glVertex3f(0.0f, -1.0f, 0.0f);
 	glVertex3f(0.0f, -1.0f, -1.0f);
 	glVertex3f(0.0f, 0.0f, -1.0f);
-	/* ve mat trai */
+
 	glNormal3d(-1, 0, 0);
 	glVertex3f(-1.0f, 0.0f, 0.0f);
 	glVertex3f(-1.0f, 0.0f, -1.0f);
 	glVertex3f(-1.0f, -1.0f, -1.0f);
 	glVertex3f(-1.0f, -1.0f, 0.0f);
-	/* ve mat duoi */
+
 	glNormal3d(0, -1, 0);
 	glVertex3f(0.0f, 0.0f, 0.0f);
 	glVertex3f(0.0f, -1.0f, -1.0f);
 	glVertex3f(-1.0f, -1.0f, -1.0f);
 	glVertex3f(-1.0f, -1.0f, 0.0f);
-	/* ve mat sau */
+
 	glNormal3d(0, 0, -1);
 	glVertex3f(0.0f, 0.0f, 0.0f);
 	glVertex3f(-1.0f, 0.0f, -1.0f);
 	glVertex3f(-1.0f, -1.0f, -1.0f);
 	glVertex3f(0.0f, -1.0f, -1.0f);
-
 	glEnd();
 	glPopMatrix();
 }
 
-/* ve canh tay trai */
-void DrawArm(float xPos, float yPos, float zPos)
-{
+void DrawArm(float xPos, float yPos, float zPos) {
 	glPushMatrix();
-	glColor3f(1.0f, 0.0f, 0.0f); // to mau do
-	glTranslatef(xPos, yPos, zPos);
+	glColor3f(1.0f, 0.0f, 0.0f);
+
+	glTranslatef(xPos + 1.0f, yPos + 1.0f, zPos + 1.0f);
 	glScalef(1.0f, 4.0f, 1.0f);
 	DrawCube(0.0f, 0.0f, 0.0f);
 	glPopMatrix();
 }
 
-/* ve dau */
-void DrawHead(float xPos, float yPos, float zPos)
-{
+void DrawHead(float xPos, float yPos, float zPos) {
 	glPushMatrix();
-	glColor3f(1.0f, 1.0f, 1.0f); // mau trang
-	glTranslatef(xPos, yPos, zPos);
+	glColor3f(1.0f, 1.0f, 1.0f);// to mau trang
+								//glTranslatef(xPos, yPos, zPos); // dung de lat theo chieu nao
+	glTranslatef(xPos + 1.0f, yPos + 1.0f, zPos + 1.0f);
 	glScalef(2.0f, 2.0f, 2.0f);
 	DrawCube(0.0f, 0.0f, 0.0f);
 	glPopMatrix();
 }
 
-/* ve than*/
-void DrawTorso(float xPos, float yPos, float zPos)
-{
+void DrawTorso(float xPos, float yPos, float zPos) {
 	glPushMatrix();
-	glColor3f(0.0f, 0.0f, 1.0f); //to mau xanh
-	glTranslatef(xPos, yPos, zPos);
+	glColor3f(0.0f, 0.0f, 1.0f);// to mau xanh
+								//glTranslatef(xPos, yPos, zPos);// dung de lat theo chieu nao
+	glTranslatef(xPos + 1.0f, yPos + 1.0f, zPos + 1.0f);
 	glScalef(3.0f, 5.0f, 2.0f);
 	DrawCube(0.0f, 0.0f, 0.0f);
 	glPopMatrix();
 }
 
-/* ve chan */
-void DrawLeg(float xPos, float yPos, float zPos)
-{
+void DrawLeg(float xPos, float yPos, float zPos) {
 	glPushMatrix();
-	glColor3f(1.0f, 1.0f, 0.0f); //to mau vang
-	glTranslatef(xPos, yPos, zPos);
+	glColor3f(1.0f, 1.0f, 0.0f);// to mau vang
+								//glTranslatef(xPos, yPos, zPos);// dung de lat theo chieu nao
+	glTranslatef(xPos + 1.0f, yPos + 1.0f, zPos + 1.0f);
 	glScalef(1.0f, 5.0f, 1.0f);
 	DrawCube(0.0f, 0.0f, 0.0f);
 	glPopMatrix();
 }
 
-void DrawRobot(float xPos, float yPos, float zPos)
-{
+void DrawRobot(float xPos, float yPos, float zPos) {
 	glPushMatrix();
-	glTranslatef(xPos, yPos, zPos);
-		/* ve dau va than */
-		DrawHead(1.0f, 2.0f, 0.0f);
-		DrawTorso(1.5f, 0.0f, 0.0f);
-		/* di chuyen canh tay trai va xoay canh tay trai */
-		glPushMatrix();
-			glTranslatef(0.0f, -0.5f, 0.0f);
-			glRotatef(armAngles[LEFT], 1.0f, 0.0f, 0.0f);
-			DrawArm(2.5f, 0.0f, -0.5f);
-		glPopMatrix();
-		/* di chuyen canh tay phai va xoay canh tay phai*/
-		glPushMatrix();
-			glTranslatef(0.0f, -0.5f, 0.0f);
-			glRotatef(armAngles[RIGHT], 1.0f, 0.0f, 0.0f);
-			DrawArm(-1.5f, 0.0f, -0.5f);
-		glPopMatrix();
-		/* di chuyen chan trai va xoay chan trai */
-		glPushMatrix();
-			glTranslatef(0.0f, -0.5f, 0.0f);
-			glRotatef(legAngles[LEFT], 1.0f, 0.0f, 0.0f);
-			DrawLeg(-0.5f, -5.0f, -0.5f);
-		glPopMatrix();
-		/* di chuyen chan phai va xoay chan phai */
-		glPushMatrix();
-			glTranslatef(0.0f, -0.5f, 0.0f);
-			glRotatef(legAngles[RIGHT], 1.0f, 0.0f, 0.0f);
-			DrawLeg(1.5f, -5.0f, -0.5f);
-		glPopMatrix();
 
+	glTranslatef(xPos + 1.0f, yPos + 1.0f, zPos + 1.0f);
+
+	DrawHead(1.0f, 2.0f, 0.0f);
+	DrawTorso(1.5f, 0.0f, 0.0f);
+
+	glPushMatrix();
+	glTranslatef(0.0f, -0.5f, 0.0f);
+	glRotatef(armAngles[LEFT], 1.0f, 0.0f, 0.0f);
+	DrawArm(2.5f, 0.0f, -0.5f);
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0.0f, -0.5f, 0.0f);
+	glRotatef(armAngles[RIGHT], 1.0f, 0.0f, 0.0f);
+	DrawArm(-1.5f, 0.0f, -0.5f);
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0.0f, -0.5, 0.0f);
+	glRotatef(legAngles[LEFT], 1.0f, 0.0f, 0.0f);
+	DrawLeg(-0.5f, -5.0f, -0.5f);
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0.0f, -0.5f, 0.0f);
+	glRotatef(legAngles[RIGHT], 1.0f, 0.0f, 0.0f);
+	DrawLeg(1.5f, -5.0f, -0.5f);
+	glPopMatrix();
 	glPopMatrix();
 }
 
-void DrawGround()
-{
-	int x, z;
-	int couter = 0;
-	for (x = -GROUND_SIZE; x < GROUND_SIZE; x += CHECK_SIZE)
+
+void Prepare() {
+
+	for (char side = 0; side < 2; side++) {
+
+		if (armStates[side] == FORWARD_STATE)
+			armAngles[side] += 0.1f;
+		else
+			armAngles[side] -= 0.1f;
+
+		if (armAngles[side] >= 15.0f)
+			armStates[side] = BACKWARD_STATE;
+		else if (armAngles[side] <= -15.0f)
+			armStates[side] = FORWARD_STATE;
+
+		if (legStates[side] == FORWARD_STATE)
+			legAngles[side] += 0.1f;
+		else
+			legAngles[side] -= 0.1f;
+
+		if (legAngles[side] >= 15.0f)
+			legStates[side] = BACKWARD_STATE;
+		else if (legAngles[side] <= -15.0f)
+			legStates[side] = FORWARD_STATE;
+
+	}
+	switch (jump)
 	{
-		for (z = -GROUND_SIZE; z < GROUND_SIZE; z += CHECK_SIZE)
-		{
-			if (couter % 2 == 0)
-				glColor3d(0.2, 0.2, 1.0); // to mau xanh
+	case JUMP:
+		if (moveY < 15.0f && flag == true)
+			moveY += 0.1f;
+		else
+			if (moveY > 8.0f)
+			{
+				moveY -= 0.01f;
+				flag = false;
+			}
 			else
-				glColor3f(1.0, 1.0, 1.0); // to mau trang
+			{
+				flag = true;
+				jump = 0;
+			}
+
+		break;
+
+	case STOP:
+		break;
+	default:
+		break;
+	}
+
+	switch (moveDirection) {
+	case MOVE_LEFT:
+		moveX = moveX - 0.03f; break;
+	case MOVE_RIGHT:
+		moveX = moveX + 0.03f; break;
+	case MOVE_UP:
+		moveZ = moveZ - 0.03f; break;
+	case MOVE_DOWN:
+		moveZ = moveZ + 0.03f; break;
+	case STOP:
+		break;
+
+	}
+}
+
+void DrawGround() {
+	int x, z;
+	int counter = 0;
+	for (x = -GROUND_SIZE; x < GROUND_SIZE; x += CHECK_SIZE) {
+		for (z = -GROUND_SIZE; z < GROUND_SIZE; z += CHECK_SIZE) {
+			if (counter % 2 == 0)
+				glColor3f(0.4, 0.1, 1.0);
+			else
+				glColor3f(2.0, 1.0, 1.0);
 			glBegin(GL_QUADS);
 			glNormal3d(0, 1, 0);
 			glVertex3f(x, FLOOR_HEIGHT, z);
@@ -209,152 +262,110 @@ void DrawGround()
 			glVertex3f(x + CHECK_SIZE, FLOOR_HEIGHT, z + CHECK_SIZE);
 			glVertex3f(x + CHECK_SIZE, FLOOR_HEIGHT, z);
 			glEnd();
-			couter++;
+			counter++;
 		}
-		couter++;
+		counter++;
 	}
 }
 
-void SettingCamera(float theta, float y)
-{
-	gluLookAt(50 * sin(theta), y, 50 * cos(theta),
-		0.0, 0.0, 0.0,
-		0.0, 1.0, 0.0);
+void SettingCamera(float theta, float y) {
+	gluLookAt(50 * sin(theta), y, 50 * cos(theta), 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 }
 
-void Keyboard(unsigned char key, int, int)
-{
-	switch (key)
-	{
-		case 'a': theta -= dTheta; break;
-		case 'd': theta += dTheta; break;
-		case 'w': y += dy; break;
-		case 's': if (y > dy) y -= dy; break;
-	}
-}
+void Keyboard(unsigned char key, int, int) {
+	switch (key) {
+	case 'a': theta -= dTheta; break;
+	case 'd': theta += dTheta; break;
+	case 'w': y += dy; break;
+	case 's': if (y > dy) y -= dy; break;
+	case 'v':
+		armAngles[LEFT] = 0.0f;
+		armAngles[RIGHT] = 0.0f;
+		legAngles[LEFT] = 0.0f;
+		legAngles[RIGHT] = 0.0f;
+		glutIdleFunc(NULL);
+		break;
+	case 'b':
+		glutIdleFunc(Idle);
+		break;
 
-void Special(int key, int, int)
-{
-	switch (key)
-	{
-		case GLUT_KEY_LEFT:
-			moveDireaction = MOVE_LEFT;
-			angle = TURN_LEFT;
-			temp = moveDireaction;
-			break;
-		case GLUT_KEY_RIGHT:
-			moveDireaction = MOVE_RIGHT;
-			angle = TURN_RIGHT;
-			temp = moveDireaction;
-			break;
-		case GLUT_KEY_UP:
-			moveDireaction = MOVE_UP;
-			angle = TURN_UP;
-			temp = moveDireaction;
-			break;
-		case GLUT_KEY_DOWN:
-			moveDireaction = MOVE_DOWN;
-			angle = TURN_DOWN;
-			temp = moveDireaction;
-			break;
-		case GLUT_KEY_END:
-			if (moveDireaction != stop)
-			{
-				moveDireaction = stop;
-			}
-			else
-			{
-				moveDireaction = temp;
-			}
-			moving = !moving;
-			break;
+	case 'f':
+		bFullsreen = !bFullsreen;
+		if (bFullsreen) {
+			glutFullScreen();
+		}
+		else {
+			glutSetWindow(nWindowID);
+			glutPositionWindow(100, 100);
+			glutReshapeWindow(640, 480);
+		}
+		break;
 	}
 	glutPostRedisplay();
 }
 
-void Prepare()
-{
-	if (moving)
-	{
-		for (char side = 0; side < 2; side++)
-		{
-			/* goc xoay cho tay */
-			if (armStates[side] == FORWARD_STATE)
-				armAngles[side] += 0.1f;
-			else
-				armAngles[side] -= 0.1f;
-			/* thay doi trang thai goc xoay vuot qua goa tri cho phep */
-			if (armAngles[side] >= 15.0f)
-				armStates[side] = BACKWARD_STATE;
-			else if (armAngles[side] <= -15.0f)
-				armStates[side] = FORWARD_STATE;
-			/* goc xoay cho chan */
-			if (legStates[side] == FORWARD_STATE)
-				legAngles[side] += 0.1f;
-			else
-				legAngles[side] -= 0.1f;
-			/* thay doi trang thai neo goc xoay vuot qua gia tri cho phep */
-			if (legAngles[side] >= 15.0f)
-				legStates[side] = BACKWARD_STATE;
-			else if (legAngles[side] <= -15.0f)
-				legStates[side] = FORWARD_STATE;
-		}
+void Special(int key, int, int) {
+	switch (key) {
+	case GLUT_KEY_LEFT:
+		moveDirection = MOVE_LEFT;
+		angle = TURN_LEFT;
+		break;
+	case GLUT_KEY_RIGHT:
+		moveDirection = MOVE_RIGHT;
+		angle = TURN_RIGHT;
+		break;
+	case GLUT_KEY_UP:
+		moveDirection = MOVE_UP;
+		angle = TURN_UP;
+		break;
+	case GLUT_KEY_DOWN:
+		moveDirection = MOVE_DOWN;
+		angle = TURN_DOWN;
+		break;
+	case GLUT_KEY_F1:
+		jump = JUMP;
+		break;
+	case GLUT_KEY_F2:
+		jump = STOP;
+		moveDirection = STOP;
+		break;
 	}
-	switch (moveDireaction)
-	{
-		case MOVE_LEFT: 
-			moveX -= 0.015f; break;
-		case MOVE_RIGHT:
-			moveX += 0.015f; break;
-		case MOVE_UP:
-			moveZ -= 0.015f; break;
-		case MOVE_DOWN:
-			moveZ += 0.015f; break;
-		case stop:
-			moveX = moveX; moveZ = moveZ; break;
-	}
+	glutPostRedisplay();
 }
 
-void Display()
-{
+void Display() {
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 	SettingCamera(theta, y);
-
 	glPushMatrix();
-		glTranslatef(moveX, 8.0f, moveZ);
-		glRotatef(angle, 0.0f, 1.0f, 0.0f);
-		Prepare();
-		DrawRobot(0.0f, 0.0f, 0.0f);  // ve robot
-	glPopMatrix();
 
+	glTranslatef(moveX, moveY, moveZ);
+	glRotatef(angle, 0.0f, 1.0f, 0.0f);
+	Prepare();
+	DrawRobot(0.0f, 0.0f, 0.0f);
+	glPopMatrix();
 	glPushMatrix();
-		DrawGround();
+	DrawGround();
 	glPopMatrix();
-
 	glFlush();
 	glutSwapBuffers();
 }
 
-void Init()
-{
+void Init() {
 	glEnable(GL_DEPTH_TEST);
 	glShadeModel(GL_SMOOTH);
-
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
 
-	/* mau anh sang ambien */
-	GLfloat ambientLight[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-	/* mau anh sang diffuse */
-	GLfloat diffuseLight[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	/* bi tri nguon sang */
-	GLfloat lightPos[] = { 25.0f, 25.0f, 25.0f, 0.0f };
-	/* huong chieu sang */
-	GLfloat spotDir[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	GLfloat ambientLight[] = { 0.2f,0.2f,0.2f,1.0f };
 
+	GLfloat diffuseLight[] = { 1.0f,1.0f,1.0f,1.0f };
+
+	GLfloat lightPos[] = { 25.0f,25.0f,25.0f,0.0 };
+
+	GLfloat spotDir[] = { 0.0,0.0,0.0,0.0 };
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientLight);
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
 	glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
@@ -364,7 +375,6 @@ void Init()
 	glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 
-	/* gan gia tri mac dinh cho robot */
 	angle = 0.0f;
 	armAngles[LEFT] = 0.0;
 	armAngles[RIGHT] = 0.0;
@@ -374,49 +384,45 @@ void Init()
 	armStates[RIGHT] = BACKWARD_STATE;
 	legStates[LEFT] = FORWARD_STATE;
 	legStates[RIGHT] = BACKWARD_STATE;
-
-	moveDireaction = MOVE_LEFT;
+	moveDirection = MOVE_LEFT;
 	angle = TURN_LEFT;
 	moveX = 0.0f;
 	moveZ = 0.0f;
 
-	/* gan gia tri mac dinh ban dau cho camera */
 	theta = 0.0f;
-	y = 5.0;
+	y = 5.0f;
 	dTheta = 0.04f;
 	dy = 1.0f;
 }
 
-void Rashape(int width, int height)
-{
-	glViewport(0, 0, (GLsizei)width, (GLsizei)height);
+void Reshape(int Width, int Height) {
+	glViewport(0, 0, (GLsizei)Width, (GLsizei)Height);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(45.0, (GLfloat)width / (GLfloat)height, 1.0, 200.0);
+	gluPerspective(45.0, (GLfloat)Width / (GLfloat)Height, 1.0, 200.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	gluLookAt(5.0, 5.0, 50.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 }
 
-void Idle()
-{
+void Idle() {
 	glutPostRedisplay();
 }
 
 int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+	glutInitDisplayMode(GL_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowPosition(80, 80);
 	glutInitWindowSize(800, 600);
-	glutCreateWindow("Robot 2");
+	glutCreateWindow("Robot_02");
 	glutDisplayFunc(Display);
-	glutReshapeFunc(Rashape);
+	glutReshapeFunc(Reshape);
 	glutIdleFunc(Idle);
 	glutSpecialFunc(Special);
 	glutKeyboardFunc(Keyboard);
-
 	Init();
 	glutMainLoop();
 	return 0;
 }
+
